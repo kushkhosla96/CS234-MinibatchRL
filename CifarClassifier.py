@@ -33,7 +33,7 @@ def main():
     x = torch.rand(3, 32, 32)
     y = cifarClassifier.forward(torch.unsqueeze(x, dim=0))
     print('The input size is: ', x.size())
-    print('The output size is: ', torch.squeeze(y, dim=0).size())
+    print('The output size is: ', torch.squeeze(y).size())
 
 if __name__ == '__main__':
     main()
