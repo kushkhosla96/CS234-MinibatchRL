@@ -25,6 +25,41 @@ class CifarClassifier(nn.Module):
         x = self.fc3(x)
         return x
 
+    def train(self,
+                train_dataset,
+                eval_dataset,
+                batch_size=16,
+                number_epochs=8,
+                lr=1e-3,
+                loss_every=2000):
+        train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                                    shuffle=True)
+        eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
+                                    shuffle=True)
+
+        optimizer = optim.SGD(self.parameters(), lr=lr)
+        cross_entropy = nn.CrossEntropyLoss()
+
+        for epoch in range(number_epochs):
+            running_loss = 0.0
+            for i, data in enumerate(train_loader, 0):
+                batch_inputs, batch_labels = data
+
+                optimizer.zero_grad()
+
+                predictions = self.forward(batch_inputs)
+                loss = cross_entropy(predictions, batch_labels)
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item()
+
+                if i % loss_every == loss_every - 1:
+                    print('[%d, %5d] loss: %.3f' %
+                          (epoch + 1, i + 1, running_loss / loss_every))
+                    running_loss = 0.0
+
+
 def main():
     cifarClassifier = CifarClassifier()
 
