@@ -1,31 +1,112 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+import torch.optim as optim
+
+from torch.utils.data import DataLoader
+
+import torchvision
+import torchvision.transforms as transforms
+
 from torchsummary import summary
+
+import argparse
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 class CifarClassifier(nn.Module):
     def __init__(self):
         super(CifarClassifier, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, 5)
-        self.max1 = nn.MaxPool2d(2, 2)
+        self.max = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 16, 5)
-        self.max2 = nn.MaxPool2d(2, 2)
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        x = self.max1(x)
+        x = self.max(x)
         x = F.relu(self.conv2(x))
-        x = self.max2(x)
+        x = self.max(x)
         x = x.view(-1, 16 * 5 * 5)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
 
-def main():
+    def train(self,
+                train_dataset,
+                eval_dataset,
+                batch_size=16,
+                number_epochs=8,
+                lr=1e-3,
+                momentum=.9,
+                log_every=2000):
+        train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                                    shuffle=True)
+        eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
+                                    shuffle=False)
+
+        optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
+        cross_entropy = nn.CrossEntropyLoss()
+
+        # ever log_every number of batches, we will output the number
+        # of examples that have been used for training, up to this point
+        number_examples_used = 0
+        examples_used = []
+
+        # every log_every number of batches, we will output the loss
+        # over that batch.
+        training_losses = []
+
+        # every log_every number of batches, we will output the loss over
+        # the eval set
+        eval_accuracy = []
+
+        for epoch in range(number_epochs):
+            running_loss = 0.0
+            for i, data in enumerate(train_loader, 0):
+
+                batch_inputs, batch_labels = data
+
+                optimizer.zero_grad()
+
+                predictions = self.forward(batch_inputs)
+                loss = cross_entropy(predictions, batch_labels)
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item()
+                number_examples_used += batch_inputs.size(0)
+
+
+                if i % log_every == log_every - 1:
+                    with torch.no_grad():
+                        correct = 0
+                        total = 0
+                        for eval_inputs, eval_labels in eval_loader:
+                            predictions = self.forward(eval_inputs)
+                            _, predicted = torch.max(predictions.data, 1)
+                            total += eval_labels.size(0)
+                            correct += (predicted == eval_labels).sum().item()
+
+                    print('[%d, %5d, %d] loss: %.3f. test accuracy: %d %%' %
+                          (epoch + 1, i + 1, number_examples_used,
+                            running_loss / log_every, 100 * correct / total))
+
+
+                    examples_used.append(number_examples_used)
+                    training_losses.append(running_loss)
+                    eval_accuracy.append(correct / total)
+
+                    running_loss = 0.0
+
+        return examples_used, training_losses, eval_accuracy
+
+def test_shapes():
     cifarClassifier = CifarClassifier()
 
     summary(cifarClassifier, input_size=(3, 32, 32))
@@ -33,7 +114,24 @@ def main():
     x = torch.rand(3, 32, 32)
     y = cifarClassifier.forward(torch.unsqueeze(x, dim=0))
     print('The input size is: ', x.size())
-    print('The output size is: ', torch.squeeze(y, dim=0).size())
+    print('The output size is: ', torch.squeeze(y).size())
+
 
 if __name__ == '__main__':
-    main()
+    classifier = CifarClassifier()
+
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+            transforms.Normalize((.5, .5, .5), (.5, .5, .5))]
+    )
+
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                            download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                            download=True, transform=transform)
+
+    training_results = classifier.train(trainset, testset, batch_size=4,
+                                        log_every=250, number_epochs=2)
+
+    plt.plot(training_results[0], training_results[2])
+    plt.show()

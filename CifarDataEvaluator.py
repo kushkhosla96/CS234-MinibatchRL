@@ -12,6 +12,7 @@ class CifarDataEvaluator(nn.Module):
         self.max2 = nn.MaxPool2d(2, 2)
         self.fc1 = nn.Linear(8 * 5 * 5, 50)
         self.fc2 = nn.Linear(50, 1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -21,6 +22,8 @@ class CifarDataEvaluator(nn.Module):
         x = x.view(-1, 8 * 5 * 5)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
+        x = torch.squeeze(x, dim=1)
+        x = self.sigmoid(x)
         return x
 
 def main():
