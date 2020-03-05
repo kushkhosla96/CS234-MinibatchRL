@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 
 from torchsummary import summary
 
+import argparse
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -21,9 +23,13 @@ from CifarClassifier import CifarClassifier
 from CifarDataEvaluator import CifarDataEvaluator
 
 class CifarAgent():
-    def __init__(self, classifier=None, evaluator=None):
+    def __init__(self, classifier=None, evaluator=None, cuda=False):
         self.classifier = classifier if classifier else CifarClassifier()
         self.evaluator = evaluator if evaluator else CifarDataEvaluator()
+        self.cuda = cuda
+        if self.cuda:
+            self.classifier.cuda()
+            self.evaluator.cuda()
 
     def train(self,
                 train_dataset,
@@ -38,10 +44,10 @@ class CifarAgent():
                 classifier_momentum=.9,
                 evaluator_lr=1e-3,
                 evaluator_momentum=.9):
-        train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
-                                    shuffle=True)
-        eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
-                                    shuffle=True)
+        self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
+                                    shuffle=True, pin_memory=self.cuda)
+        self.eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
+                                    shuffle=True, pin_memory=self.cuda)
 
         classifier_optimizer = optim.SGD(self.classifier.parameters(),
                                             lr=classifier_lr, momentum=classifier_momentum)
@@ -58,7 +64,7 @@ class CifarAgent():
         eval_accuracy = []
 
         for epoch in range(number_epochs):
-            for i, data in enumerate(train_loader, 0):
+            for i, data in enumerate(self.train_loader, 0):
                 batch_inputs, batch_labels = data
 
                 batch_hs = self.evaluator(batch_inputs)
@@ -92,7 +98,7 @@ class CifarAgent():
                     number_eval_samples = 0
                     classifier_validation_loss = 0
                     correct = 0
-                    for j, eval_data in enumerate(eval_loader, 0):
+                    for j, eval_data in enumerate(self.eval_loader, 0):
                         eval_batch_inputs, eval_batch_labels = eval_data
                         eval_batch_predictions = self.classifier(eval_batch_inputs)
                         eval_batch_losses = cross_entropy(eval_batch_predictions,
@@ -134,8 +140,38 @@ def test_shapes():
     print('The output size is: ', classifications.size())
     print('The number of sampled indices is: ', len(sample_indices))
 
+def test_cuda(cuda=False):
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+            transforms.Normalize((.5, .5, .5), (.5, .5, .5))]
+    )
+    train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                    download=True, transform=transform)
+    test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                            download=True, transform=transform)
+
+    # we call train so that cifarAgent creates the dataloaders
+    # we pass it with number_epochs = 0 so that it doesn't actually do
+    # any training, since we are just checking cuda status
+    cifarAgent = CifarAgent(cuda=cuda)
+    cifarAgent.train(train_dataset, test_dataset, number_epochs=0)
+
+    images, labels = next(iter(cifarAgent.train_loader))
+    print(f"Are the images on cuda? The answer is: {images.is_cuda}")
+    print(f"Is the classifier on cuda? The answer is: {next(cifarAgent.classifier.parameters()).is_cuda}")
+
+
 if __name__ == '__main__':
-        agent = CifarAgent()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test_cuda', default=False)
+    parser.add_argument('--cuda', default=False)
+    args = parser.parse_args()
+
+    if args.test_cuda:
+        test_cuda(args.cuda)
+    else:
+        agent = CifarAgent(cuda=args.cuda)
 
         transform = transforms.Compose(
             [transforms.ToTensor(),

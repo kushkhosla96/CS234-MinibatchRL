@@ -45,9 +45,9 @@ class CifarClassifier(nn.Module):
                 lr=1e-3,
                 momentum=.9,
                 log_every=2000):
-        train_loader = DataLoader(train_dataset, batch_size=batch_size,
+        self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
                                     shuffle=True)
-        eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
+        self.eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
                                     shuffle=False)
 
         optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
@@ -68,7 +68,7 @@ class CifarClassifier(nn.Module):
 
         for epoch in range(number_epochs):
             running_loss = 0.0
-            for i, data in enumerate(train_loader, 0):
+            for i, data in enumerate(self.train_loader, 0):
 
                 batch_inputs, batch_labels = data
 
@@ -87,7 +87,7 @@ class CifarClassifier(nn.Module):
                     with torch.no_grad():
                         correct = 0
                         total = 0
-                        for eval_inputs, eval_labels in eval_loader:
+                        for eval_inputs, eval_labels in self.eval_loader:
                             predictions = self.forward(eval_inputs)
                             _, predicted = torch.max(predictions.data, 1)
                             total += eval_labels.size(0)
