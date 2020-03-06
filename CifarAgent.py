@@ -24,12 +24,9 @@ from CifarDataEvaluator import CifarDataEvaluator
 
 class CifarAgent():
     def __init__(self, classifier=None, evaluator=None, cuda=False):
-        self.classifier = classifier if classifier else CifarClassifier()
-        self.evaluator = evaluator if evaluator else CifarDataEvaluator()
+        self.classifier = classifier if classifier else CifarClassifier(use_cuda=cuda)
+        self.evaluator = evaluator if evaluator else CifarDataEvaluator(use_cuda=cuda)
         self.cuda = cuda
-        if self.cuda:
-            self.classifier.cuda()
-            self.evaluator.cuda()
 
     def train(self,
                 train_dataset,
@@ -44,6 +41,7 @@ class CifarAgent():
                 classifier_momentum=.9,
                 evaluator_lr=1e-3,
                 evaluator_momentum=.9):
+
         self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
                                     shuffle=True, pin_memory=self.cuda)
         self.eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
@@ -147,8 +145,6 @@ def test_cuda(cuda=False):
     )
     train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                                     download=True, transform=transform)
-    test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                            download=True, transform=transform)
 
     # we call train so that cifarAgent creates the dataloaders
     # we pass it with number_epochs = 0 so that it doesn't actually do
@@ -157,6 +153,7 @@ def test_cuda(cuda=False):
     cifarAgent.train(train_dataset, test_dataset, number_epochs=0)
 
     images, labels = next(iter(cifarAgent.train_loader))
+    print(f"Is cuda set? The answer is: {cuda}")
     print(f"Are the images on cuda? The answer is: {images.is_cuda}")
     print(f"Is the classifier on cuda? The answer is: {next(cifarAgent.classifier.parameters()).is_cuda}")
 
