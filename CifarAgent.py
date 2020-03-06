@@ -24,9 +24,14 @@ from CifarDataEvaluator import CifarDataEvaluator
 
 class CifarAgent():
     def __init__(self, classifier=None, evaluator=None, cuda=False):
-        self.classifier = classifier if classifier else CifarClassifier(use_cuda=cuda)
-        self.evaluator = evaluator if evaluator else CifarDataEvaluator(use_cuda=cuda)
+        self.classifier = classifier if classifier else CifarClassifier()
+        self.evaluator = evaluator if evaluator else CifarDataEvaluator()
+
         self.cuda = cuda
+        if self.cuda:
+            self.classifier.cuda()
+            self.evaluator.cuda()
+            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def train(self,
                 train_dataset,
@@ -63,11 +68,11 @@ class CifarAgent():
 
         for epoch in range(number_epochs):
             for i, data in enumerate(self.train_loader, 0):
-                batch_inputs, batch_labels = data
+                batch_inputs, batch_labels = data[0].to(self.device), data[1].to(self.device)
 
-                batch_hs = self.evaluator(batch_inputs)
+                batch_hs = self.evaluator(batch_inputs).to(self.device)
                 bern = Bernoulli(batch_hs)
-                batch_s = bern.sample()
+                batch_s = bern.sample().to(self.device)
 
                 for iteration in range(inner_iteration):
                     classifier_optimizer.zero_grad()
@@ -78,14 +83,14 @@ class CifarAgent():
                     indices_to_use = np.random.choice(maximum_possible_index,
                                                         small_batch_size)
 
-                    mini_batch_inputs = batch_inputs[indices_to_use]
-                    mini_batch_labels = batch_labels[indices_to_use]
-                    mini_batch_s = batch_s[indices_to_use]
+                    mini_batch_inputs = batch_inputs[indices_to_use].to(self.device)
+                    mini_batch_labels = batch_labels[indices_to_use].to(self.device)
+                    mini_batch_s = batch_s[indices_to_use].to(self.device)
 
-                    mini_batch_predictions = self.classifier(mini_batch_inputs)
+                    mini_batch_predictions = self.classifier(mini_batch_inputs).to(self.device)
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
-                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses)
+                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
                     classifier_optimizer.step()
 
@@ -97,8 +102,8 @@ class CifarAgent():
                     classifier_validation_loss = 0
                     correct = 0
                     for j, eval_data in enumerate(self.eval_loader, 0):
-                        eval_batch_inputs, eval_batch_labels = eval_data
-                        eval_batch_predictions = self.classifier(eval_batch_inputs)
+                        eval_batch_inputs, eval_batch_labels = eval_data[0].to(self.device), eval_data[1].to(self.device)
+                        eval_batch_predictions = self.classifier(eval_batch_inputs).to(self.device)
                         eval_batch_losses = cross_entropy(eval_batch_predictions,
                                                                 eval_batch_labels)
                         classifier_validation_loss += torch.sum(eval_batch_losses)

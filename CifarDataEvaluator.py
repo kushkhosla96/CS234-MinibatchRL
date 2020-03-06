@@ -4,9 +4,8 @@ import torch.nn.functional as F
 from torchsummary import summary
 
 class CifarDataEvaluator(nn.Module):
-    def __init__(self, use_cuda=False):
+    def __init__(self):
         super(CifarDataEvaluator, self).__init__()
-        self.use_cuda = use_cuda
         self.conv1 = nn.Conv2d(3, 16, 5)
         self.max1 = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 8, 5)
@@ -14,12 +13,8 @@ class CifarDataEvaluator(nn.Module):
         self.fc1 = nn.Linear(8 * 5 * 5, 50)
         self.fc2 = nn.Linear(50, 1)
         self.sigmoid = nn.Sigmoid()
-        if self.use_cuda:
-            self.cuda()
 
     def forward(self, x):
-        if self.use_cuda:
-            x = x.cuda()
         x = F.relu(self.conv1(x))
         x = self.max1(x)
         x = F.relu(self.conv2(x))

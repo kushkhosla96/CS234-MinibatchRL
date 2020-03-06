@@ -17,20 +17,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class CifarClassifier(nn.Module):
-    def __init__(self, use_cuda=False):
+    def __init__(self):
         super(CifarClassifier, self).__init__()
-        self.use_cuda = use_cuda
         self.conv1 = nn.Conv2d(3, 16, 5)
         self.max = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 16, 5)
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
-        self.cuda()
 
     def forward(self, x):
-        if self.use_cuda:
-           x = x.cuda()
         x = F.relu(self.conv1(x))
         x = self.max(x)
         x = F.relu(self.conv2(x))
