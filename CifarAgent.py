@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 
 from torchsummary import summary
 
+import argparse
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -21,9 +23,15 @@ from CifarClassifier import CifarClassifier
 from CifarDataEvaluator import CifarDataEvaluator
 
 class CifarAgent():
-    def __init__(self, classifier=None, evaluator=None):
+    def __init__(self, classifier=None, evaluator=None, cuda=False):
         self.classifier = classifier if classifier else CifarClassifier()
         self.evaluator = evaluator if evaluator else CifarDataEvaluator()
+
+        self.cuda = cuda
+        if self.cuda:
+            self.classifier.cuda()
+            self.evaluator.cuda()
+            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def train(self,
                 train_dataset,
@@ -38,10 +46,11 @@ class CifarAgent():
                 classifier_momentum=.9,
                 evaluator_lr=1e-3,
                 evaluator_momentum=.9):
-        train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
-                                    shuffle=True)
-        eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
-                                    shuffle=True)
+
+        self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
+                                    shuffle=True, pin_memory=self.cuda)
+        self.eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
+                                    shuffle=True, pin_memory=self.cuda)
 
         classifier_optimizer = optim.SGD(self.classifier.parameters(),
                                             lr=classifier_lr, momentum=classifier_momentum)
@@ -58,12 +67,12 @@ class CifarAgent():
         eval_accuracy = []
 
         for epoch in range(number_epochs):
-            for i, data in enumerate(train_loader, 0):
-                batch_inputs, batch_labels = data
+            for i, data in enumerate(self.train_loader, 0):
+                batch_inputs, batch_labels = data[0].to(self.device), data[1].to(self.device)
 
-                batch_hs = self.evaluator(batch_inputs)
+                batch_hs = self.evaluator(batch_inputs).to(self.device)
                 bern = Bernoulli(batch_hs)
-                batch_s = bern.sample()
+                batch_s = bern.sample().to(self.device)
 
                 for iteration in range(inner_iteration):
                     classifier_optimizer.zero_grad()
@@ -74,14 +83,14 @@ class CifarAgent():
                     indices_to_use = np.random.choice(maximum_possible_index,
                                                         small_batch_size)
 
-                    mini_batch_inputs = batch_inputs[indices_to_use]
-                    mini_batch_labels = batch_labels[indices_to_use]
-                    mini_batch_s = batch_s[indices_to_use]
+                    mini_batch_inputs = batch_inputs[indices_to_use].to(self.device)
+                    mini_batch_labels = batch_labels[indices_to_use].to(self.device)
+                    mini_batch_s = batch_s[indices_to_use].to(self.device)
 
-                    mini_batch_predictions = self.classifier(mini_batch_inputs)
+                    mini_batch_predictions = self.classifier(mini_batch_inputs).to(self.device)
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
-                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses)
+                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
                     classifier_optimizer.step()
 
@@ -92,9 +101,9 @@ class CifarAgent():
                     number_eval_samples = 0
                     classifier_validation_loss = 0
                     correct = 0
-                    for j, eval_data in enumerate(eval_loader, 0):
-                        eval_batch_inputs, eval_batch_labels = eval_data
-                        eval_batch_predictions = self.classifier(eval_batch_inputs)
+                    for j, eval_data in enumerate(self.eval_loader, 0):
+                        eval_batch_inputs, eval_batch_labels = eval_data[0].to(self.device), eval_data[1].to(self.device)
+                        eval_batch_predictions = self.classifier(eval_batch_inputs).to(self.device)
                         eval_batch_losses = cross_entropy(eval_batch_predictions,
                                                                 eval_batch_labels)
                         classifier_validation_loss += torch.sum(eval_batch_losses)
@@ -134,8 +143,37 @@ def test_shapes():
     print('The output size is: ', classifications.size())
     print('The number of sampled indices is: ', len(sample_indices))
 
+def test_cuda(cuda=False):
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+            transforms.Normalize((.5, .5, .5), (.5, .5, .5))]
+    )
+    train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                    download=True, transform=transform)
+
+    # we call train so that cifarAgent creates the dataloaders
+    # we pass it with number_epochs = 0 so that it doesn't actually do
+    # any training, since we are just checking cuda status
+    cifarAgent = CifarAgent(cuda=cuda)
+    cifarAgent.train(train_dataset, test_dataset, number_epochs=0)
+
+    images, labels = next(iter(cifarAgent.train_loader))
+    print(f"Is cuda set? The answer is: {cuda}")
+    print(f"Are the images on cuda? The answer is: {images.is_cuda}")
+    print(f"Is the classifier on cuda? The answer is: {next(cifarAgent.classifier.parameters()).is_cuda}")
+
+
 if __name__ == '__main__':
-        agent = CifarAgent()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test_cuda', default=False)
+    parser.add_argument('--cuda', default=False)
+    args = parser.parse_args()
+
+    if args.test_cuda:
+        test_cuda(args.cuda)
+    else:
+        agent = CifarAgent(cuda=args.cuda)
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -147,9 +185,10 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        training_results = agent.train(trainset, testset, large_batch_size=32,
-                                            small_batch_size=8, number_epochs=1,
-                                            inner_iteration=8, moving_average_window=10)
+        training_results = agent.train(trainset, testset, large_batch_size=512,
+                                            small_batch_size=128, eval_batch_size=64, number_epochs=4,
+                                            inner_iteration=120, moving_average_window=15)
 
         plt.plot(training_results[0], training_results[1])
+        plt.savefig('cifar_agent_lbs512_sbs128_ebs64_E4_I120.png')
         plt.show()

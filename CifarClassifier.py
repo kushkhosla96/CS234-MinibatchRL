@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class CifarClassifier(nn.Module):
-    def __init__(self):
+    def __init__(self, use_cuda=False):
         super(CifarClassifier, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, 5)
         self.max = nn.MaxPool2d(2, 2)
@@ -25,6 +25,11 @@ class CifarClassifier(nn.Module):
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
+
+        self.use_cuda = use_cuda
+        if self.use_cuda:
+            self.cuda()
+            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -45,9 +50,9 @@ class CifarClassifier(nn.Module):
                 lr=1e-3,
                 momentum=.9,
                 log_every=2000):
-        train_loader = DataLoader(train_dataset, batch_size=batch_size,
+        self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
                                     shuffle=True)
-        eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
+        self.eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
                                     shuffle=False)
 
         optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
@@ -68,13 +73,13 @@ class CifarClassifier(nn.Module):
 
         for epoch in range(number_epochs):
             running_loss = 0.0
-            for i, data in enumerate(train_loader, 0):
+            for i, data in enumerate(self.train_loader, 0):
 
-                batch_inputs, batch_labels = data
+                batch_inputs, batch_labels = data[0].to(self.device), data[1].to(self.device)
 
                 optimizer.zero_grad()
 
-                predictions = self.forward(batch_inputs)
+                predictions = self.forward(batch_inputs).to(self.device)
                 loss = cross_entropy(predictions, batch_labels)
                 loss.backward()
                 optimizer.step()
@@ -87,8 +92,9 @@ class CifarClassifier(nn.Module):
                     with torch.no_grad():
                         correct = 0
                         total = 0
-                        for eval_inputs, eval_labels in eval_loader:
-                            predictions = self.forward(eval_inputs)
+                        for data in self.eval_loader:
+                            eval_inputs, eval_labels = data[0].to(self.device), data[1].to(self.device)
+                            predictions = self.forward(eval_inputs).to(self.device)
                             _, predicted = torch.max(predictions.data, 1)
                             total += eval_labels.size(0)
                             correct += (predicted == eval_labels).sum().item()
@@ -118,20 +124,31 @@ def test_shapes():
 
 
 if __name__ == '__main__':
-    classifier = CifarClassifier()
 
-    transform = transforms.Compose(
-        [transforms.ToTensor(),
-            transforms.Normalize((.5, .5, .5), (.5, .5, .5))]
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test_shape', default=False)
+    parser.add_argument('--cuda', default=False)
+    args = parser.parse_args()
 
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                            download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                            download=True, transform=transform)
+    if args.test_shape:
+        test_shape()
+    else:
+        classifier = CifarClassifier(use_cuda=args.cuda)
 
-    training_results = classifier.train(trainset, testset, batch_size=4,
-                                        log_every=250, number_epochs=2)
+        transform = transforms.Compose(
+            [transforms.ToTensor(),
+                transforms.Normalize((.5, .5, .5), (.5, .5, .5))]
+        )
 
-    plt.plot(training_results[0], training_results[2])
-    plt.show()
+
+        trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                download=True, transform=transform)
+        testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                                download=True, transform=transform)
+
+        training_results = classifier.train(trainset, testset, batch_size=64,
+                                            log_every=250, number_epochs=10)
+
+        plt.plot(training_results[0], training_results[2])
+        plt.savefig('cifar_classifier_bs64_log_every250.png')
+        plt.show()
