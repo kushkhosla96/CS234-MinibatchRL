@@ -185,9 +185,10 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        training_results = agent.train(trainset, testset, large_batch_size=32,
-                                            small_batch_size=8, number_epochs=1,
-                                            inner_iteration=8, moving_average_window=10)
+        training_results = agent.train(trainset, testset, large_batch_size=512,
+                                            small_batch_size=128, eval_batch_size=64, number_epochs=4,
+                                            inner_iteration=120, moving_average_window=15)
 
         plt.plot(training_results[0], training_results[1])
+        plt.savefig('cifar_agent_lbs512_sbs128_ebs64_E4_I120.png')
         plt.show()
