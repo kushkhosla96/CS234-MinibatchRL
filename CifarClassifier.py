@@ -146,9 +146,17 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        training_results = classifier.train(trainset, testset, batch_size=64,
-                                            log_every=250, number_epochs=10)
+        batch_size = 64
+        log_every = 250
+        number_epochs = 10
+        training_results = classifier.train(trainset, testset, batch_size=batch_size,
+                                            log_every=log_every, number_epochs=number_epochs)
+
+        model_name = f'cifar_classifier_bs{batch_size}_log_every{log_every}_ne{number_epochs}'
 
         plt.plot(training_results[0], training_results[2])
-        plt.savefig('cifar_classifier_bs64_log_every250.png')
+        plt.savefig(model_name + '.png'))
+
+        torch.save(classifier.state_dict(), model_name + '.pt')
+
         plt.show()

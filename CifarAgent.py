@@ -185,10 +185,22 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        training_results = agent.train(trainset, testset, large_batch_size=512,
-                                            small_batch_size=128, eval_batch_size=64, number_epochs=4,
-                                            inner_iteration=120, moving_average_window=15)
+        lbs = 512
+        sbs = 128
+        ebs = 64
+        number_epochs = 4
+        inner_iteration = 120
+        moving_average_window = 15
+        training_results = agent.train(trainset, testset, large_batch_size=lbs,
+                                            small_batch_size=128, eval_batch_size=ebs, number_epochs=number_epochs,
+                                            inner_iteration=inner_iteration, moving_average_window=moving_average_window)
+
+        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
         plt.plot(training_results[0], training_results[1])
-        plt.savefig('cifar_agent_lbs512_sbs128_ebs64_E4_I120.png')
+        plt.savefig(model_name + '.png')
+
+        torch.save(agent.classifier.state_dict(), model_name + '_classifier.pt')
+        torch.save(agent.evaluator.state_dict(), model_name + '_evaluator.pt')
+
         plt.show()
