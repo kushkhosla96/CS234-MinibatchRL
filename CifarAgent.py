@@ -168,12 +168,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_cuda', default=False)
     parser.add_argument('--cuda', default=False)
+    parser.add_argument('--trained_classifier_path', default=None)
     args = parser.parse_args()
 
     if args.test_cuda:
         test_cuda(args.cuda)
     else:
-        agent = CifarAgent(cuda=args.cuda)
+        if args.trained_classifier_path is not None:
+            classifier = CifarClassifier()
+            classifier.load_state_dict(torch.load(args.trained_classifier_path))
+        else:
+            classifier = None
+
+        agent = CifarAgent(classifier=classifier, cuda=args.cuda)
 
         transform = transforms.Compose(
             [transforms.ToTensor(),

@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
         batch_size = 64
         log_every = 250
-        number_epochs = 20
+        number_epochs = 20 
         training_results = classifier.train(trainset, testset, batch_size=batch_size,
                                             log_every=log_every, number_epochs=number_epochs)
 
