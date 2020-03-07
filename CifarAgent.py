@@ -85,11 +85,15 @@ class CifarAgent():
 
                     mini_batch_inputs = batch_inputs[indices_to_use].to(self.device)
                     mini_batch_labels = batch_labels[indices_to_use].to(self.device)
+                    mini_batch_hs = batch_hs[indices_to_use].to(self.device)
+
                     mini_batch_s = batch_s[indices_to_use].to(self.device)
 
                     mini_batch_predictions = self.classifier(mini_batch_inputs).to(self.device)
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
+                    mini_batch_losses = mini_batch_losses * mini_batch_hs
+
                     classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
                     classifier_optimizer.step()
