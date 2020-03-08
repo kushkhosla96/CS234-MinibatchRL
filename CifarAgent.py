@@ -42,8 +42,8 @@ class CifarAgent():
                 number_epochs=8,
                 inner_iteration=200,
                 moving_average_window=20,
-                classifier_lr=1e-2,
-                evaluator_lr=1e-2):
+                classifier_lr=1e-3,
+                evaluator_lr=1e-3):
 
         self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
                                     shuffle=True, pin_memory=self.cuda)
