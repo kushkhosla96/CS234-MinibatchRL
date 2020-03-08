@@ -25,10 +25,12 @@ class CifarClassifierMLP(nn.Module):
             self.hiddens.append(nn.Linear(hidden_dim, hidden_dim))
         self.hiddens = nn.ModuleList(self.hiddens)
         self.out_layer = nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = F.relu(self.first_layer(x))
         for hidden in self.hiddens:
             x = F.relu(hidden(x))
         x = self.out_layer(x)
+        x = self.sigmoid(x)
         return x
