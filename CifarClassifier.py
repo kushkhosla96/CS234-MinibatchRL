@@ -47,7 +47,7 @@ class CifarClassifier(nn.Module):
                 eval_dataset,
                 batch_size=16,
                 number_epochs=8,
-                lr=1e-2,
+                lr=1e-3,
                 log_every=2000):
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
                                     shuffle=True)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
         training_results = classifier.train(trainset, testset, batch_size=batch_size,
                                             log_every=log_every, number_epochs=number_epochs)
 
-        model_name = f'cifar_classifier_bs{batch_size}_log_every{log_every}_ne{number_epochs}'
+        model_name = f'cifar_classifier_bs{batch_size}_log_every{log_every}_ne{number_epochs}_adam'
 
         plt.plot(training_results[0], training_results[2])
         plt.savefig(model_name + '.png')

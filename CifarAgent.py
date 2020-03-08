@@ -202,7 +202,7 @@ if __name__ == '__main__':
                                             small_batch_size=128, eval_batch_size=ebs, number_epochs=number_epochs,
                                             inner_iteration=inner_iteration, moving_average_window=moving_average_window)
 
-        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}_adam'
 
         plt.plot(training_results[0], training_results[1])
         plt.savefig(model_name + '.png')
