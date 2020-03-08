@@ -92,7 +92,7 @@ class CifarAgent():
                     mini_batch_predictions = self.classifier(mini_batch_inputs).to(self.device)
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
-                    mini_batch_losses = mini_batch_losses * mini_batch_hs
+                    mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
 
                     classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
