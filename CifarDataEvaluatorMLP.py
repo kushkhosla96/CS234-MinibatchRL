@@ -16,7 +16,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-class CifarClassifierMLP(nn.Module):
+class CifarDataEvaluatorMLP(nn.Module):
     def __init__(self, use_cuda=False, in_size=84, hidden_dim=100, num_hidden_layers=5):
         super(CifarClassifierMLP, self).__init__()
         self.first_layer = nn.Linear(in_size, hidden_dim)
