@@ -23,7 +23,7 @@ from CifarClassifier import CifarClassifier
 from CifarDataEvaluator import CifarDataEvaluator
 
 class CifarAgent():
-    def __init__(self, classifier=None, evaluator=None, cuda=False):
+    def __init__(self, classifier=None, evaluator=None, cuda=False, name=""):
         self.classifier = classifier if classifier else CifarClassifier()
         self.evaluator = evaluator if evaluator else CifarDataEvaluator()
 
@@ -31,7 +31,9 @@ class CifarAgent():
         if self.cuda:
             self.classifier.cuda()
             self.evaluator.cuda()
-            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        self.name = name
 
     def train(self,
                 train_dataset,
@@ -62,11 +64,16 @@ class CifarAgent():
         examples_used = []
         eval_accuracy = []
 
+        batch_hs_means = []
+        batch_hs_stds = []
+
         for epoch in range(number_epochs):
             for i, data in enumerate(self.train_loader, 0):
                 batch_inputs, batch_labels = data[0].to(self.device), data[1].to(self.device)
 
                 batch_hs = self.evaluator(batch_inputs).to(self.device)
+                batch_hs_means.append(batch_hs.mean())
+                batch_hs_stds.append(batch_hs.std())
                 bern = Bernoulli(batch_hs)
                 batch_s = bern.sample().to(self.device)
 
@@ -132,6 +139,21 @@ class CifarAgent():
                 print("[%d] test accuracy: %d %%" %
                         (number_examples_used, 100 * accuracy))
 
+        plt.title("Average Data Evaluator Weights")
+        plt.xlabel("Iteration")
+        plt.ylabel("Weight")
+        plt.ylim(0, 1)
+        plt.plot(batch_hs_means)
+        plt.savefig(self.name + "_average_weights.png")
+        plt.close()
+
+        plt.title("Data Evaluator Weights Standard Deviations")
+        plt.xlabel("Iteration")
+        plt.ylabel("Standard Deviation")
+        plt.plot(batch_hs_stds)
+        plt.savefig(self.name + "_weights_stds.png")
+        plt.close()
+
         return examples_used, eval_accuracy
 
 def test_shapes():
@@ -180,7 +202,7 @@ if __name__ == '__main__':
         else:
             classifier = None
 
-        agent = CifarAgent(classifier=classifier, cuda=args.cuda)
+
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -192,17 +214,22 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        lbs = 512
+        lbs = 2048
         sbs = 128
         ebs = 64
         number_epochs = 4
-        inner_iteration = 120
+        inner_iteration = 1
         moving_average_window = 15
+
+        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+
+        agent = CifarAgent(classifier=classifier, cuda=args.cuda, name=model_name)
+
         training_results = agent.train(trainset, testset, large_batch_size=lbs,
                                             small_batch_size=128, eval_batch_size=ebs, number_epochs=number_epochs,
                                             inner_iteration=inner_iteration, moving_average_window=moving_average_window)
 
-        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+        
 
         plt.plot(training_results[0], training_results[1])
         plt.savefig(model_name + '.png')
