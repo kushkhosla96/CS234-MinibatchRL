@@ -38,9 +38,10 @@ class CifarClassifier(nn.Module):
         x = self.max(x)
         x = x.view(-1, 16 * 5 * 5)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        features_for_evaluator = self.fc2(x)
+        x = F.relu(features_for_evaluator)
         x = self.fc3(x)
-        return x
+        return x, features_for_evaluator
 
     def train(self,
                 train_dataset,
@@ -79,7 +80,7 @@ class CifarClassifier(nn.Module):
 
                 optimizer.zero_grad()
 
-                predictions = self.forward(batch_inputs).to(self.device)
+                predictions, _ = self.forward(batch_inputs).to(self.device)
                 loss = cross_entropy(predictions, batch_labels)
                 loss.backward()
                 optimizer.step()
@@ -94,7 +95,7 @@ class CifarClassifier(nn.Module):
                         total = 0
                         for data in self.eval_loader:
                             eval_inputs, eval_labels = data[0].to(self.device), data[1].to(self.device)
-                            predictions = self.forward(eval_inputs).to(self.device)
+                            predictions, _ = self.forward(eval_inputs).to(self.device)
                             _, predicted = torch.max(predictions.data, 1)
                             total += eval_labels.size(0)
                             correct += (predicted == eval_labels).sum().item()
@@ -118,7 +119,7 @@ def test_shapes():
     summary(cifarClassifier, input_size=(3, 32, 32))
 
     x = torch.rand(3, 32, 32)
-    y = cifarClassifier.forward(torch.unsqueeze(x, dim=0))
+    y, _ = cifarClassifier.forward(torch.unsqueeze(x, dim=0))
     print('The input size is: ', x.size())
     print('The output size is: ', torch.squeeze(y).size())
 
@@ -148,7 +149,7 @@ if __name__ == '__main__':
 
         batch_size = 64
         log_every = 250
-        number_epochs = 20 
+        number_epochs = 20
         training_results = classifier.train(trainset, testset, batch_size=batch_size,
                                             log_every=log_every, number_epochs=number_epochs)
 

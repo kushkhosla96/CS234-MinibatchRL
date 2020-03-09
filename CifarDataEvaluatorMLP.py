@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 class CifarDataEvaluatorMLP(nn.Module):
     def __init__(self, use_cuda=False, in_size=84, hidden_dim=100, num_hidden_layers=5):
-        super(CifarClassifierMLP, self).__init__()
+        super(CifarDataEvaluatorMLP, self).__init__()
         self.first_layer = nn.Linear(in_size, hidden_dim)
         self.hiddens = []
         for _ in range(num_hidden_layers):
