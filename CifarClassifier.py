@@ -48,15 +48,14 @@ class CifarClassifier(nn.Module):
                 eval_dataset,
                 batch_size=16,
                 number_epochs=8,
-                lr=1e-3,
-                momentum=.9,
+                lr=1e-2,
                 log_every=2000):
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
                                     shuffle=True)
         self.eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
                                     shuffle=False)
 
-        optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
+        optimizer = optim.Adam(self.parameters(), lr=lr)
         cross_entropy = nn.CrossEntropyLoss()
 
         # ever log_every number of batches, we will output the number
