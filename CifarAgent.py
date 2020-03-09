@@ -232,7 +232,7 @@ if __name__ == '__main__':
         inner_iteration = 1
         moving_average_window = 15
 
-        model_name = f'cifar_agent_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+        model_name = f'cifar_agent_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
         agent = CifarAgent(classifier=classifier, cuda=args.cuda, name=model_name)
 
