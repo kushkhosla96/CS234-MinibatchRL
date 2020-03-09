@@ -40,12 +40,14 @@ def main():
 
     evaluator = CifarDataEvaluatorMLP()
     if args.evaluator_location is not None:
-        evaluator.load_state_dict(torch.load(parser.evaluator_location))
+        evaluator.load_state_dict(torch.load(args.evaluator_location,
+                                                map_location=device))
     evaluator = evaluator.to(device)
 
     classifier = CifarClassifier()
     if args.classifier_location is not None:
-        classifier.load_state_dict(torch.load(parser.classifier_location))
+        classifier.load_state_dict(torch.load(args.classifier_location,
+                                                map_location=device))
     classifier = classifier.to(device)
 
     transform = transforms.Compose(
@@ -58,6 +60,9 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                             download=True, transform=transform)
 
+    print(type(trainset.data), trainset.data.shape, type(trainset.targets))
+
+    '''
     evaluations_of_trainset = []
     with torch.no_grad():
         for data in trainset:
@@ -70,7 +75,7 @@ def main():
 
             evaluator_values = evaluator.forward(features)
             print(evaluator_values)
-
+    '''
 
     percentages = [.1, .2, .3, .4, .5]
     remove_low_value_accuracies = []
