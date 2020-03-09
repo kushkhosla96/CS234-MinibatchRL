@@ -44,16 +44,18 @@ class CifarAgent():
                 number_epochs=8,
                 inner_iteration=200,
                 moving_average_window=20,
-                classifier_lr=1e-2,
-                evaluator_lr=1e-2):
+                classifier_lr=1e-3,
+                classifier_momentum=.9,
+                evaluator_lr=1e-3,
+                evaluator_momentum=.9):
 
         self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
                                     shuffle=True, pin_memory=self.cuda)
         self.eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size,
                                     shuffle=True, pin_memory=self.cuda)
 
-        classifier_optimizer = optim.Adam(self.classifier.parameters(), lr=classifier_lr)
-        evaluator_optimizer = optim.Adam(self.evaluator.parameters(), lr=evaluator_lr)
+        classifier_optimizer = optim.SGD(self.classifier.parameters(), lr=classifier_lr, momentum=classifier_momentum)
+        evaluator_optimizer = optim.SGD(self.evaluator.parameters(), lr=evaluator_lr, momentum=evaluator_momentum)
 
         cross_entropy = nn.CrossEntropyLoss()
         delta = 0
@@ -210,6 +212,7 @@ if __name__ == '__main__':
         if args.trained_classifier_path is not None:
             classifier = CifarClassifier()
             classifier.load_state_dict(torch.load(args.trained_classifier_path))
+            print("LOADED THE MODEL")
         else:
             classifier = None
 
