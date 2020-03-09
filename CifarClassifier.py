@@ -48,14 +48,15 @@ class CifarClassifier(nn.Module):
                 eval_dataset,
                 batch_size=16,
                 number_epochs=8,
-                lr=1e-2,
+                lr=1e-3,
+                momentum=.9,
                 log_every=2000):
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
                                     shuffle=True)
         self.eval_loader = DataLoader(eval_dataset, batch_size=batch_size,
                                     shuffle=False)
 
-        optimizer = optim.Adam(self.parameters(), lr=lr)
+        optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         cross_entropy = nn.CrossEntropyLoss()
 
         # ever log_every number of batches, we will output the number
@@ -79,7 +80,8 @@ class CifarClassifier(nn.Module):
 
                 optimizer.zero_grad()
 
-                predictions, _ = self.forward(batch_inputs).to(self.device)
+                predictions, _ = self.forward(batch_inputs)
+                predictions = predictions.to(self.device)
                 loss = cross_entropy(predictions, batch_labels)
                 loss.backward()
                 optimizer.step()
@@ -94,7 +96,8 @@ class CifarClassifier(nn.Module):
                         total = 0
                         for data in self.eval_loader:
                             eval_inputs, eval_labels = data[0].to(self.device), data[1].to(self.device)
-                            predictions, _ = self.forward(eval_inputs).to(self.device)
+                            predictions, _ = self.forward(eval_inputs)
+                            predictions = predictions.to(self.device)
                             _, predicted = torch.max(predictions.data, 1)
                             total += eval_labels.size(0)
                             correct += (predicted == eval_labels).sum().item()
@@ -152,7 +155,7 @@ if __name__ == '__main__':
         training_results = classifier.train(trainset, testset, batch_size=batch_size,
                                             log_every=log_every, number_epochs=number_epochs)
 
-        model_name = f'cifar_classifier_bs{batch_size}_log_every{log_every}_ne{number_epochs}'
+        model_name = f'cifar_classifier_mlp_bs{batch_size}_log_every{log_every}_ne{number_epochs}'
 
         plt.plot(training_results[0], training_results[2])
         plt.savefig(model_name + '.png')
