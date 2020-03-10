@@ -83,9 +83,6 @@ def main():
 
     with torch.no_grad():
         for i, data in enumerate(train_loader, 0):
-            if i == 2:
-                break
-
             inputs, labels = data[0], data[1]
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -112,7 +109,7 @@ def main():
                                                             targets_after_removing_low_value,
                                                             transform=transform)
 
-        classifier_without_low_value = CifarClassifier()
+        classifier_without_low_value = CifarClassifier(use_cuda=args.cuda)
         training_results = classifier_without_low_value.train(cifar_data_after_removing_low_value,
                                                                 testset, number_epochs=3)
         remove_low_value_accuracies.append(training_results[2][-1])
@@ -124,7 +121,7 @@ def main():
                                                             targets_after_removing_high_value,
                                                             transform=transform)
 
-        classifier_without_high_value = CifarClassifier()
+        classifier_without_high_value = CifarClassifier(use_cuda=args.cuda)
         training_results = classifier_without_high_value.train(cifar_data_after_removing_high_value,
                                                                 testset,
                                                                 number_epochs=3)
