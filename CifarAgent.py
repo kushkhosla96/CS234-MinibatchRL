@@ -133,6 +133,7 @@ class CifarAgent():
 
                     classifier_validation_loss /= number_eval_samples
                     grad_factor = classifier_validation_loss - delta
+                    # print(grad_factor)
 
                     examples_used.append(number_examples_used)
                     accuracy = correct / number_eval_samples
@@ -143,8 +144,6 @@ class CifarAgent():
                             (1 - batch_s) * torch.log(1 - batch_hs)
                 evaluator_loss = grad_factor * torch.mean(log_pis)
                 evaluator_loss.backward()
-                for layer in self.evaluator.hiddens:
-                    print(layer.weight.grad)
                 evaluator_optimizer.step()
 
                 delta = (moving_average_window - 1) / moving_average_window * delta + \
