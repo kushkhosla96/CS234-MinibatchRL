@@ -29,7 +29,8 @@ class CifarClassifier(nn.Module):
         self.use_cuda = use_cuda
         if self.use_cuda:
             self.cuda()
-            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        self.device = torch.device('cuda:0' if self.use_cuda and torch.cuda.is_available() else 'cpu')
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -113,6 +114,21 @@ class CifarClassifier(nn.Module):
 
                     running_loss = 0.0
 
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for data in self.eval_loader:
+                eval_inputs, eval_labels = data[0].to(self.device), data[1].to(self.device)
+                predictions, _ = self.forward(eval_inputs)
+                predictions = predictions.to(self.device)
+                _, predicted = torch.max(predictions.data, 1)
+                total += eval_labels.size(0)
+                correct += (predicted == eval_labels).sum().item()
+
+            examples_used.append(number_examples_used)
+            training_losses.append(running_loss)
+            eval_accuracy.append(correct / total)
+
         return examples_used, training_losses, eval_accuracy
 
 def test_shapes():
@@ -134,7 +150,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test_shape:
-        test_shape()
+        test_shapes()
     else:
         classifier = CifarClassifier(use_cuda=args.cuda)
 

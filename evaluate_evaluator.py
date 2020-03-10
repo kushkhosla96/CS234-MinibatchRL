@@ -15,6 +15,8 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
+from torch.utils.data import TensorDataset
+from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 from torchsummary import summary
@@ -27,6 +29,22 @@ import matplotlib.pyplot as plt
 from CifarClassifier import CifarClassifier
 from CifarDataEvaluator import CifarDataEvaluator
 from CifarDataEvaluatorMLP import CifarDataEvaluatorMLP
+
+class CifarSubset(Dataset):
+    def __init__(self, images, targets, transform=None):
+        super(CifarSubset, self).__init__()
+        self.images = images
+        self.targets = targets
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        if self.transform is not None:
+            image = self.transform(image)
+        return image, self.targets[idx]
 
 
 def main():
@@ -60,12 +78,14 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                             download=True, transform=transform)
 
-    print(type(trainset.data), trainset.data.shape, type(trainset.targets))
+    evaluations_of_trainset = torch.tensor([], requires_grad=False)
+    train_loader = DataLoader(trainset, batch_size=16, shuffle=False)
 
-    '''
-    evaluations_of_trainset = []
     with torch.no_grad():
-        for data in trainset:
+        for i, data in enumerate(train_loader, 0):
+            if i == 2:
+                break
+
             inputs, labels = data[0], data[1]
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -73,13 +93,45 @@ def main():
             _, features = classifier.forward(inputs)
             features = features.to(device)
 
-            evaluator_values = evaluator.forward(features)
-            print(evaluator_values)
-    '''
+            evaluator_values = torch.squeeze(evaluator.forward(features))
+            evaluations_of_trainset = torch.cat((evaluations_of_trainset, evaluator_values))
 
-    percentages = [.1, .2, .3, .4, .5]
+    worst_to_best_indices = evaluations_of_trainset.argsort()
+
+    percentages = [0, .1, .2, .3, .4, .5]
     remove_low_value_accuracies = []
     remove_high_value_accuracies = []
+
+    for percentage in percentages:
+        number_of_examples_to_remove = int(percentage * len(worst_to_best_indices))
+
+        indices_to_keep = worst_to_best_indices[number_of_examples_to_remove:]
+        images_after_removing_low_value = trainset.data[indices_to_keep]
+        targets_after_removing_low_value = np.array(trainset.targets)[indices_to_keep]
+        cifar_data_after_removing_low_value = CifarSubset(images_after_removing_low_value,
+                                                            targets_after_removing_low_value,
+                                                            transform=transform)
+
+        classifier_without_low_value = CifarClassifier()
+        training_results = classifier_without_low_value.train(cifar_data_after_removing_low_value,
+                                                                testset, number_epochs=3)
+        remove_low_value_accuracies.append(training_results[2][-1])
+
+        indices_to_keep = worst_to_best_indices[:len(worst_to_best_indices) - number_of_examples_to_remove]
+        images_after_removing_high_value = trainset.data[indices_to_keep]
+        targets_after_removing_high_value = np.array(trainset.targets)[indices_to_keep]
+        cifar_data_after_removing_high_value = CifarSubset(images_after_removing_high_value,
+                                                            targets_after_removing_high_value,
+                                                            transform=transform)
+
+        classifier_without_high_value = CifarClassifier()
+        training_results = classifier_without_high_value.train(cifar_data_after_removing_high_value,
+                                                                testset,
+                                                                number_epochs=3)
+        remove_high_value_accuracies.append(training_results[2][-1])
+
+
+    print(remove_low_value_accuracies, remove_high_value_accuracies)
 
 if __name__ == '__main__':
     main()

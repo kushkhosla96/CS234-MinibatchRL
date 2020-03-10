@@ -31,7 +31,7 @@ class CifarAgent():
         if self.cuda:
             self.classifier.cuda()
             self.evaluator.cuda()
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if self.cuda and torch.cuda.is_available() else 'cpu')
 
         self.name = name
 
