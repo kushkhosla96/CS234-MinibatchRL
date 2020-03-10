@@ -20,11 +20,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from CifarClassifier import CifarClassifier
+from WideResNet import WideResNet
 from CifarDataEvaluatorMLP import CifarDataEvaluatorMLP
 
 class CifarAgent():
     def __init__(self, classifier=None, evaluator=None, cuda=False, name=""):
-        self.classifier = classifier if classifier else CifarClassifier()
+        self.classifier = classifier if classifier else WideResNet()
         self.evaluator = evaluator if evaluator else CifarDataEvaluatorMLP()
 
         self.cuda = cuda
@@ -142,6 +143,8 @@ class CifarAgent():
                             (1 - batch_s) * torch.log(1 - batch_hs)
                 evaluator_loss = grad_factor * torch.mean(log_pis)
                 evaluator_loss.backward()
+                for layer in self.evaluator.hiddens:
+                    print(layer.weight.grad)
                 evaluator_optimizer.step()
 
                 delta = (moving_average_window - 1) / moving_average_window * delta + \
@@ -210,13 +213,11 @@ if __name__ == '__main__':
         test_cuda(args.cuda)
     else:
         if args.trained_classifier_path is not None:
-            classifier = CifarClassifier()
-            classifier.load_state_dict(torch.load(args.trained_classifier_path))
+            classifier = WideResNet(use_cuda=args.cuda)
+            classifier.load_state_dict(torch.load(args.trained_classifier_path, map_location=classifier.device))
             print("LOADED THE MODEL")
         else:
             classifier = None
-
-
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -235,7 +236,7 @@ if __name__ == '__main__':
         inner_iteration = 1
         moving_average_window = 15
 
-        model_name = f'cifar_agent_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+        model_name = f'cifar_agent_wideresnet_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
         agent = CifarAgent(classifier=classifier, cuda=args.cuda, name=model_name)
 
