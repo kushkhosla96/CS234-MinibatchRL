@@ -71,13 +71,14 @@ class CifarAgent():
         batch_hs_stds = []
 
         for epoch in range(number_epochs):
+            print(f'Starting epoch {epoch+1}')
             for i, data in enumerate(self.train_loader, 0):
                 batch_inputs, batch_labels = data[0].to(self.device), data[1].to(self.device)
 
                 with torch.no_grad():
                     _, batch_features = self.classifier(batch_inputs)
                     batch_features = batch_features.to(self.device)
-                batch_hs = self.evaluator(batch_features).to(self.device)
+                batch_hs = torch.squeeze(self.evaluator(batch_features).to(self.device))
 
                 batch_hs_means.append(batch_hs.mean())
                 batch_hs_stds.append(batch_hs.std())
@@ -106,9 +107,10 @@ class CifarAgent():
 
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
-                    mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
-
-                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
+                    # mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
+                    
+                    classifier_loss = torch.mean(mini_batch_losses).to(self.device)
+                    # classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
                     classifier_optimizer.step()
 
@@ -132,7 +134,7 @@ class CifarAgent():
                         correct += (predicted == eval_batch_labels).sum().item()
 
                     classifier_validation_loss /= number_eval_samples
-                    grad_factor = classifier_validation_loss - delta
+                    grad_factor = -1 * (classifier_validation_loss - delta)
                     # print(grad_factor)
 
                     examples_used.append(number_examples_used)
@@ -231,9 +233,9 @@ if __name__ == '__main__':
         lbs = 2048
         sbs = 128
         ebs = 64
-        number_epochs = 4
+        number_epochs = 5
         inner_iteration = 100
-        moving_average_window = 15
+        moving_average_window = 5
 
         model_name = f'cifar_agent_wideresnet_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
