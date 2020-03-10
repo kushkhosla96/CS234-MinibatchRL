@@ -78,7 +78,7 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                             download=True, transform=transform)
 
-    evaluations_of_trainset = torch.tensor([], requires_grad=False)
+    evaluations_of_trainset = torch.tensor([], requires_grad=False).to(device)
     train_loader = DataLoader(trainset, batch_size=16, shuffle=False)
 
     with torch.no_grad():
@@ -100,23 +100,26 @@ def main():
     remove_high_value_accuracies = []
 
     for percentage in percentages:
+        print('starting {percentage}')
         number_of_examples_to_remove = int(percentage * len(worst_to_best_indices))
 
         indices_to_keep = worst_to_best_indices[number_of_examples_to_remove:]
-        images_after_removing_low_value = trainset.data[indices_to_keep]
-        targets_after_removing_low_value = np.array(trainset.targets)[indices_to_keep]
+        images_after_removing_low_value = trainset.data[indices_to_keep.cpu()]
+        targets_after_removing_low_value = np.array(trainset.targets)[indices_to_keep.cpu()]
         cifar_data_after_removing_low_value = CifarSubset(images_after_removing_low_value,
                                                             targets_after_removing_low_value,
                                                             transform=transform)
 
         classifier_without_low_value = CifarClassifier(use_cuda=args.cuda)
         training_results = classifier_without_low_value.train(cifar_data_after_removing_low_value,
-                                                                testset, number_epochs=3)
+                                                                testset, number_epochs=5)
         remove_low_value_accuracies.append(training_results[2][-1])
 
+        print('finished training classifier without low values')
+
         indices_to_keep = worst_to_best_indices[:len(worst_to_best_indices) - number_of_examples_to_remove]
-        images_after_removing_high_value = trainset.data[indices_to_keep]
-        targets_after_removing_high_value = np.array(trainset.targets)[indices_to_keep]
+        images_after_removing_high_value = trainset.data[indices_to_keep.cpu()]
+        targets_after_removing_high_value = np.array(trainset.targets)[indices_to_keep.cpu()]
         cifar_data_after_removing_high_value = CifarSubset(images_after_removing_high_value,
                                                             targets_after_removing_high_value,
                                                             transform=transform)
@@ -124,7 +127,7 @@ def main():
         classifier_without_high_value = CifarClassifier(use_cuda=args.cuda)
         training_results = classifier_without_high_value.train(cifar_data_after_removing_high_value,
                                                                 testset,
-                                                                number_epochs=3)
+                                                                number_epochs=5)
         remove_high_value_accuracies.append(training_results[2][-1])
 
 
