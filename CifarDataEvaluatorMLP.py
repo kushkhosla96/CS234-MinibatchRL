@@ -17,17 +17,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class CifarDataEvaluatorMLP(nn.Module):
-    def __init__(self, use_cuda=False, in_size=84, hidden_dim=100, num_hidden_layers=5):
+    def __init__(self, use_cuda=False, in_size=64*8*8, num_hidden_layers=5):
         super(CifarDataEvaluatorMLP, self).__init__()
-        self.first_layer = nn.Linear(in_size, hidden_dim)
+        self.in_size = in_size
+        self.first_layer = nn.Linear(in_size, in_size // 4)
         self.hiddens = []
-        for _ in range(num_hidden_layers):
-            self.hiddens.append(nn.Linear(hidden_dim, hidden_dim))
+        for i in range(1, num_hidden_layers):
+            self.hiddens.append(nn.Linear(in_size // 4**i, in_size // 4**(i+1)))
         self.hiddens = nn.ModuleList(self.hiddens)
-        self.out_layer = nn.Linear(hidden_dim, 1)
+        self.out_layer = nn.Linear(in_size // 4**(num_hidden_layers), 1)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        x = x.view(-1, self.in_size)
         x = F.relu(self.first_layer(x))
         for hidden in self.hiddens:
             x = F.relu(hidden(x))

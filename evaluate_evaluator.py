@@ -30,6 +30,8 @@ from CifarClassifier import CifarClassifier
 from CifarDataEvaluator import CifarDataEvaluator
 from CifarDataEvaluatorMLP import CifarDataEvaluatorMLP
 
+from WideResNet import WideResNet
+
 class CifarSubset(Dataset):
     def __init__(self, images, targets, transform=None):
         super(CifarSubset, self).__init__()
@@ -62,7 +64,7 @@ def main():
                                                 map_location=device))
     evaluator = evaluator.to(device)
 
-    classifier = CifarClassifier()
+    classifier = WideResNet()
     if args.classifier_location is not None:
         classifier.load_state_dict(torch.load(args.classifier_location,
                                                 map_location=device))
@@ -78,7 +80,7 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                             download=True, transform=transform)
 
-    evaluations_of_trainset = torch.tensor([], requires_grad=False).to(device)
+    evaluations_of_trainset = torch.tensor([], requires_grad=False)
     train_loader = DataLoader(trainset, batch_size=16, shuffle=False)
 
     with torch.no_grad():
@@ -95,39 +97,37 @@ def main():
 
     worst_to_best_indices = evaluations_of_trainset.argsort()
 
-    percentages = [0, .1, .2, .3, .4, .5]
+    percentages = [0]
+    # percentages = [0, .1, .2, .3, .4, .5]
     remove_low_value_accuracies = []
     remove_high_value_accuracies = []
 
     for percentage in percentages:
-        print('starting {percentage}')
         number_of_examples_to_remove = int(percentage * len(worst_to_best_indices))
 
         indices_to_keep = worst_to_best_indices[number_of_examples_to_remove:]
-        images_after_removing_low_value = trainset.data[indices_to_keep.cpu()]
-        targets_after_removing_low_value = np.array(trainset.targets)[indices_to_keep.cpu()]
+        images_after_removing_low_value = trainset.data[indices_to_keep]
+        targets_after_removing_low_value = np.array(trainset.targets)[indices_to_keep]
         cifar_data_after_removing_low_value = CifarSubset(images_after_removing_low_value,
                                                             targets_after_removing_low_value,
                                                             transform=transform)
 
-        classifier_without_low_value = CifarClassifier(use_cuda=args.cuda)
+        classifier_without_low_value = WideResNet(use_cuda=args.cuda)
         training_results = classifier_without_low_value.train(cifar_data_after_removing_low_value,
-                                                                testset, number_epochs=5)
+                                                                testset, number_epochs=3)
         remove_low_value_accuracies.append(training_results[2][-1])
 
-        print('finished training classifier without low values')
-
         indices_to_keep = worst_to_best_indices[:len(worst_to_best_indices) - number_of_examples_to_remove]
-        images_after_removing_high_value = trainset.data[indices_to_keep.cpu()]
-        targets_after_removing_high_value = np.array(trainset.targets)[indices_to_keep.cpu()]
+        images_after_removing_high_value = trainset.data[indices_to_keep]
+        targets_after_removing_high_value = np.array(trainset.targets)[indices_to_keep]
         cifar_data_after_removing_high_value = CifarSubset(images_after_removing_high_value,
                                                             targets_after_removing_high_value,
                                                             transform=transform)
 
-        classifier_without_high_value = CifarClassifier(use_cuda=args.cuda)
+        classifier_without_high_value = WideResNet(use_cuda=args.cuda)
         training_results = classifier_without_high_value.train(cifar_data_after_removing_high_value,
                                                                 testset,
-                                                                number_epochs=5)
+                                                                number_epochs=3)
         remove_high_value_accuracies.append(training_results[2][-1])
 
 

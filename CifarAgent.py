@@ -20,11 +20,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from CifarClassifier import CifarClassifier
+from WideResNet import WideResNet
 from CifarDataEvaluatorMLP import CifarDataEvaluatorMLP
 
 class CifarAgent():
     def __init__(self, classifier=None, evaluator=None, cuda=False, name=""):
-        self.classifier = classifier if classifier else CifarClassifier()
+        self.classifier = classifier if classifier else WideResNet()
         self.evaluator = evaluator if evaluator else CifarDataEvaluatorMLP()
 
         self.cuda = cuda
@@ -44,9 +45,9 @@ class CifarAgent():
                 number_epochs=8,
                 inner_iteration=200,
                 moving_average_window=20,
-                classifier_lr=1e-3,
+                classifier_lr=1e-2,
                 classifier_momentum=.9,
-                evaluator_lr=1e-3,
+                evaluator_lr=5e-2,
                 evaluator_momentum=.9):
 
         self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
@@ -132,6 +133,7 @@ class CifarAgent():
 
                     classifier_validation_loss /= number_eval_samples
                     grad_factor = classifier_validation_loss - delta
+                    # print(grad_factor)
 
                     examples_used.append(number_examples_used)
                     accuracy = correct / number_eval_samples
@@ -210,13 +212,11 @@ if __name__ == '__main__':
         test_cuda(args.cuda)
     else:
         if args.trained_classifier_path is not None:
-            classifier = CifarClassifier()
-            classifier.load_state_dict(torch.load(args.trained_classifier_path))
+            classifier = WideResNet(use_cuda=args.cuda)
+            classifier.load_state_dict(torch.load(args.trained_classifier_path, map_location=classifier.device))
             print("LOADED THE MODEL")
         else:
             classifier = None
-
-
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -232,10 +232,10 @@ if __name__ == '__main__':
         sbs = 128
         ebs = 64
         number_epochs = 4
-        inner_iteration = 1
+        inner_iteration = 100
         moving_average_window = 15
 
-        model_name = f'cifar_agent_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
+        model_name = f'cifar_agent_wideresnet_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
         agent = CifarAgent(classifier=classifier, cuda=args.cuda, name=model_name)
 
