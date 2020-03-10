@@ -45,9 +45,9 @@ class CifarAgent():
                 number_epochs=8,
                 inner_iteration=200,
                 moving_average_window=20,
-                classifier_lr=1e-3,
+                classifier_lr=1e-2,
                 classifier_momentum=.9,
-                evaluator_lr=1e-3,
+                evaluator_lr=5e-2,
                 evaluator_momentum=.9):
 
         self.train_loader = DataLoader(train_dataset, batch_size=large_batch_size,
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         sbs = 128
         ebs = 64
         number_epochs = 4
-        inner_iteration = 1
+        inner_iteration = 100
         moving_average_window = 15
 
         model_name = f'cifar_agent_wideresnet_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
