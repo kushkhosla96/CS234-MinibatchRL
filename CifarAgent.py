@@ -93,7 +93,7 @@ class CifarAgent():
 
                     # this selects a random subset of the batch to use
                     indices_to_use = np.random.choice(maximum_possible_index,
-                                                        small_batch_size)
+                                                        small_batch_size, replace=True)
 
                     mini_batch_inputs = batch_inputs[indices_to_use].to(self.device)
                     mini_batch_labels = batch_labels[indices_to_use].to(self.device)
@@ -105,12 +105,11 @@ class CifarAgent():
                     mini_batch_predictions = mini_batch_predictions.to(self.device)
                     mini_batch_features = mini_batch_features.to(self.device)
 
-                    mini_batch_losses = cross_entropy(mini_batch_predictions,
-                                                        mini_batch_labels)
-                    # mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
+                    mini_batch_losses = nn.CrossEntropyLoss(reduction='none')(mini_batch_predictions, mini_batch_labels)
+                    mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
 
-                    classifier_loss = torch.mean(mini_batch_losses).to(self.device)
-                    # classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
+                    # classifier_loss = torch.mean(mini_batch_losses).to(self.device)
+                    classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
                     classifier_optimizer.step()
 
@@ -230,10 +229,10 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        lbs = 128
-        sbs = 128
+        lbs = 512
+        sbs = 512
         ebs = 64
-        number_epochs = 5
+        number_epochs = 4
         inner_iteration = 1
         moving_average_window = 1
 
@@ -242,7 +241,7 @@ if __name__ == '__main__':
         agent = CifarAgent(classifier=classifier, cuda=args.cuda, name=model_name)
 
         training_results = agent.train(trainset, testset, large_batch_size=lbs,
-                                            small_batch_size=128, eval_batch_size=ebs, number_epochs=number_epochs,
+                                            small_batch_size=sbs, eval_batch_size=ebs, number_epochs=number_epochs,
                                             inner_iteration=inner_iteration, moving_average_window=moving_average_window)
 
 

@@ -211,12 +211,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_shape', default=False)
     parser.add_argument('--cuda', default=False)
+    parser.add_argument('--trained_classifier_path', default=None)
     args = parser.parse_args()
 
     if args.test_shape:
         test_shapes()
     else:
-        classifier = WideResNet(use_cuda=args.cuda)
+        if args.trained_classifier_path is None:
+            classifier = WideResNet(use_cuda=args.cuda)
+        else:
+            classifier = WideResNet(use_cuda=args.cuda)
+            classifier.load_state_dict(torch.load(args.trained_classifier_path, map_location=classifier.device))
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -229,7 +234,7 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        batch_size = 64
+        batch_size = 256
         log_every = 50
         number_epochs = 1
         training_results = classifier.train(trainset, testset, batch_size=batch_size,
