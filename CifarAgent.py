@@ -108,7 +108,7 @@ class CifarAgent():
                     mini_batch_losses = cross_entropy(mini_batch_predictions,
                                                         mini_batch_labels)
                     # mini_batch_losses = mini_batch_losses * mini_batch_hs.detach()
-                    
+
                     classifier_loss = torch.mean(mini_batch_losses).to(self.device)
                     # classifier_loss = torch.mean(mini_batch_s * mini_batch_losses).to(self.device)
                     classifier_loss.backward()
@@ -230,12 +230,12 @@ if __name__ == '__main__':
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                 download=True, transform=transform)
 
-        lbs = 2048
+        lbs = 128
         sbs = 128
         ebs = 64
         number_epochs = 5
-        inner_iteration = 100
-        moving_average_window = 5
+        inner_iteration = 1
+        moving_average_window = 1
 
         model_name = f'cifar_agent_wideresnet_mlp_lbs{lbs}_sbs{128}_ebs{64}_ne{number_epochs}_ii{inner_iteration}_maw{moving_average_window}'
 
